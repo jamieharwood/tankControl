@@ -1,217 +1,145 @@
-#!/usr/bin/env python3
+from machine import Pin
+import machine
+import utime
+import varibles as vars
+import neopixel
+import urequests
+import ubinascii
 
-from settings import settingsClass
-from sunrisesetClass import sunRiseSet
-#from ledcontrolClass import ledcontrol
-from weatherClass import weather
-from pumpStatusClass import PumpStatus
-import socket
-import time
-import datetime
-import subprocess
-import pytz
+pump = machine.PWM(machine.Pin(12), freq=50)
+hose = Pin(4, Pin.OUT)  # D3
+irrigation = Pin(4, Pin.OUT)  # D3
 
-myTimeZone= pytz.timezone('Europe/London')
+pumpOff = 77
+pumpOn = 115
 
-def checkProcess(processname):
-    procList = subprocess.getstatusoutput('ps ax | grep {0} | grep -v grep | awk \'{print $1}\''.replace('{0}',  processname))
-    if (len(procList[1]) > 0):
+neoLow = 0
+neoMid = 64
+neoHi = 255
 
-        processCount = str(procList[1] ).count('\n')
+red = (neoMid, neoLow, neoLow)
+yellow = (255, 226, neoLow)
+tango = (243, 114, 82)
+green = (neoLow, neoMid, neoLow)
+indigo = (neoLow, 126, 135)
+blue = (neoLow, neoLow, neoMid)
+purple = (neoMid, neoLow, neoMid)
+black = (neoLow, neoLow, neoLow)
 
-        if (processCount > 0):
-            print('kill {0}'.replace('{0}',  processname))
-            quit()
+powerLed = 3
+pumpLed = 2
+irrigationLed = 1
+hoseLed = 0
+
+stateOff = 0
+stateIrrigation = 1
+stateHose = 2
+
+functionStateChanged = False
+
+
+def pumpState(state):
+    if state == stateOff:  # all off
+        pump.duty(pumpOff)
+        hose.off()
+        irrigation.off()
+
+        np[pumpLed] = red
+        np[irrigationLed] = red
+        np[hoseLed] = red
+
+    elif state == stateIrrigation:  # irrigation on
+        pump.duty(pumpOn)
+        hose.oon()
+        irrigation.off()
+
+        np[pumpLed] = green
+        np[irrigationLed] = green
+        np[hoseLed] = red
+
+    elif state == stateHose:  # pump on
+        pump.duty(pumpOn)
+        hose.off()
+        irrigation.on()
+
+        np[pumpLed] = green
+        np[irrigationLed] = red
+        np[hoseLed] = green
+
+
+def isSunrise():
+    url = "http://192.168.86.240:5000/isSunrise"
+
+    print(url)
+
+    try:
+        response = urequests.get(url)
+
+        # print(url)
+        print(response.text)
+
+        # utime.sleep(0.25)
+
+        response.close()
+    except:
+        print('Fail www connect...')
+
+
+def isSunset():
+    url = "http://192.168.86.240:5000/isSunset"
+
+    print(url)
+
+    try:
+        response = urequests.get(url)
+
+        # print(url)
+        print(response.text)
+
+        # utime.sleep(0.25)
+
+        response.close()
+    except:
+        print('Fail www connect...')
+
+
+def isHose():
+    url = "http://192.168.86.240:5000/isHose"
+
+    print(url)
+
+    try:
+        response = urequests.get(url)
+
+        # print(url)
+        print(response.text)
+
+        # utime.sleep(0.25)
+
+        response.close()
+    except:
+        print('Fail www connect...')
+
+
+def main():  # Pump control
+    # Set initial state
+    np = neopixel.NeoPixel(machine.Pin(12), 4)
+    np[powerLed] = red
+    np.write()
+
+    pumpState(stateOff)
+
+    while True:
+        # To pump or not to pump
+
+        if isSunrise():
+            pumpState(stateIrrigation)
+        elif isSunset():
+            pumpState(stateIrrigation)
+        elif isHose():
+            pumpState(stateHose)
         else:
-            print('run {0}'.replace('{0}',  processname))
+            pumpState(stateOff)
 
-def getStatusTrendText(trend):
-    nowTime = datetime.datetime.now(myTimeZone)
-    trend = trend[1:len(trend)-1]
-    
-    if (nowTime.minute > 9):
-        returnString = "  @" + str(nowTime.hour) + ":" + str(nowTime.minute)
-    else:
-        returnString = "  @" + str(nowTime.hour) + ":0" + str(nowTime.minute)
-    
-    returnString = returnString + chr(0) + "no irrigation due to " + trend.lower() +"."
-    
-    return returnString
 
-def getStatusText(sunrise,  sunset):
-    nowTime = datetime.datetime.now(myTimeZone)
-        
-    if (nowTime.minute > 9):
-        returnString = "  @" + str(nowTime.hour) + ":" + str(nowTime.minute) + chr(0)
-    else:
-        returnString = "  @" + str(nowTime.hour) + ":0" + str(nowTime.minute) + chr(0)
-    returnString = returnString + chr(0) + chr(30) + sunrise[0:5] +"  "
-    returnString = returnString + chr(31) + sunset[0:5]
-    
-    return returnString
-    
-def main():
-    # Setup
-    checkProcess('control.py')
-    
-    state = -2 # Startup state
-    myWeather  = weather()
-    #myLedControl = ledcontrol() # init remote led control
-    mySettings = settingsClass() # get settings from db
-    myPumpStatus = PumpStatus()
-    #mySettings.resetSettings()
-        
-    # Init pump and soleniods
-    hostname = 'tankControl'
-    mqServerAddr = socket.gethostbyname(hostname)
-    hostname = socket.gethostname()
-    
-    # ****************************************
-    # Set init hose, irrigation and pump state
-    hoseState = 0
-    irrigationState = 0
-    pumpState = 0
-    
-    #myPumpStatus.setSatus(hoseState,  irrigationState,  pumpState,  'Initiate the app')
-    #myPumpStatus.getStatus()
-
-    #jason = json .dumps(returnString)
-    #myMqControl = mqPump(mqServerAddr)
-    #myMqControl.send(hoseState, irrigationState, pumpState)
-    # ****************************************
-    
-    # Init sensors and tank display
-    #tankLeds = {'pin0': 1,  'pin1': 1,  'pin2': 1, 'pin3': 0,  'pin4': 0,  'pin5': 1,  'pin6': 0,  'pin7': 0 }
-    #mySensor = mqSensor(mqServerAddr)
-    #mySensor.send(tankLeds)
-    
-    # Set sunrise sunset vars
-    dayRollover = -1 # get new sunrise sunset times only once!
-    mySunrise = sunRiseSet() # Get sunrise and sunset from DB
-    
-    myWeather.getWeather()
-    
-    myTimeNow = datetime.datetime.now(myTimeZone)
-    currTime = myTimeNow.hour + myTimeNow.minute
-    lastTime = currTime
-    currHour = -1
-    lastHour = -2
-    
-    while True: # Loop
-        myTimeNow = datetime.datetime.now(myTimeZone)
-        currTime = myTimeNow.hour + myTimeNow.minute
-        currHour = myTimeNow.hour
-        
-        # Update the time string for the display every minute
-        if (currTime != lastTime and state == -1):
-            lastTime = currTime
-        
-        # Update the weather trend (last 24 hours) every hour
-        if (currHour != lastHour):
-            lastHour = currHour
-            myWeather.getWeather()
-            myWeather.getRecentTrend()
-        
-        # get new sunrise and sunset times
-        rollTime = myTimeNow.hour + myTimeNow.minute
-        if (rollTime == 0 and dayRollover == -1):
-            mySunrise = sunRiseSet()
-            
-            dayRollover = 0
-        elif (rollTime == 0 and dayRollover == 0):
-            dayRollover = 0
-        else:
-            dayRollover = -1
-        
-        numStartTime = (myTimeNow.hour * 3600) + (myTimeNow.minute * 60) + myTimeNow.second
-
-        # *****************************************************
-        # complex if conditions so I pulled them into variables
-        # Extreme weather
-        ifWeatherTrend = ((myWeather.isTrend('Rain') or myWeather.isTrend('Snow')) and state != 5)
-        
-        # Normal sun rise and set
-        ifSunrise = ((numStartTime >= mySunrise.numSunriseSeconds and numStartTime <= (mySunrise.numSunriseSeconds + (mySettings.settings["pumpduration"] * 60))) and state != 1)
-        ifSunset = ((numStartTime >= mySunrise.numSunsetSeconds and numStartTime <= (mySunrise.numSunsetSeconds + (mySettings.settings["pumpduration"] * 60))) and state != 4)
-        
-        # Irrigation and hose requests
-        ifIrrigationButton = False #ifIrrigationButton = (str(mySensor.settings['irrigationButton']) =='1');
-        ifHose = False #ifHose = (str(mySensor.settings['hoseButton']) =='1') ;
-        
-        # Return from all previous states
-        ifBauFromSunrise = (not(numStartTime >= mySunrise.numSunriseSeconds and numStartTime <= (mySunrise.numSunriseSeconds + (mySettings.settings["pumpduration"] * 60))) and state == 1) 
-        ifBauFromSunset = (not(numStartTime >= mySunrise.numSunsetSeconds and numStartTime <= (mySunrise.numSunsetSeconds + (mySettings.settings["pumpduration"] * 60))) and state == 4)
-        ifBauFromIrrigationButton = (ifIrrigationButton == False and state == 3)
-        ifBauFromHoseButton = (ifHose == False and state == 2)
-        ifBauFromStartup = ((ifIrrigationButton or ifHose) and state == -2)
-        # *****************************************************
-        
-        if (ifWeatherTrend == True and (ifHose == False and state != 2)):
-            state = 5 # Weather is rain or snow
-            
-            hoseState = 0
-            irrigationState = 0
-            pumpState = 0
-            
-            myPumpStatus.setSatus(hoseState,  irrigationState,  pumpState,  'state = 5')
-            
-        elif (ifIrrigationButton and ifHose):
-            #Fail
-            
-            hoseState = 0
-            irrigationState = 0
-            pumpState = 0
-            
-            myPumpStatus.setSatus(hoseState,  irrigationState,  pumpState,  'state = fail')
-            
-        elif (ifSunrise):
-            # sunrise irrigation requested
-            state = 1 # Sunrise state
-            
-            hoseState = 0
-            irrigationState = 1
-            pumpState = 1
-            
-            myPumpStatus.setSatus(hoseState,  irrigationState,  pumpState,  'state = 1')
-
-        elif (ifSunset):
-            # sunrise irrigation requested
-            state = 4 # Sunset state
-            
-            hoseState = 0
-            irrigationState = 1
-            pumpState = 1
-            
-        elif (ifIrrigationButton and state != 3):
-            # sunrise irrigation requested
-            state = 3 # Sunrise state
-            
-            hoseState = 0
-            irrigationState = 1
-            pumpState = 1
-            
-            myPumpStatus.setSatus(hoseState,  irrigationState,  pumpState)
-
-        elif (ifHose and state != 2):
-            # hose requested on
-            state = 2 # Hose state
-            
-            hoseState = 1
-            irrigationState = 0
-            pumpState = 1
-            
-            myPumpStatus.setSatus(hoseState,  irrigationState,  pumpState,  'state = 2')
-
-        elif (ifBauFromSunrise or ifBauFromSunset or ifBauFromStartup or ifBauFromIrrigationButton or ifBauFromHoseButton):
-            # BAU state
-            state = -1
-            
-            hoseState = 0
-            irrigationState = 0
-            pumpState = 0
-            
-            myPumpStatus.setSatus(hoseState,  irrigationState,  pumpState,  'state = -1')
-
-        time.sleep(5)
-        
 main()
