@@ -11,7 +11,6 @@ pump = machine.PWM(machine.Pin(13), freq=500)  # D7
 hose = Pin(12, Pin.OUT)  # D6
 irrigation = Pin(5, Pin.OUT)  # D1
 cooling = Pin(2, Pin.OUT)  # D4
-# D4, spare
 
 hose.on()
 irrigation.on()
@@ -20,7 +19,7 @@ cooling.on()
 pumpOff = 750  # mid PWM 1500 useconds
 pumpOn = 1000  # max PWM 2000 useaconds
 
-np = neopixel.NeoPixel(Pin(neoPin), 4)
+np = neopixel.NeoPixel(Pin(neoPin), 8)
 
 neoLow = 0
 neoMid = 64
@@ -39,6 +38,9 @@ powerLed = 3
 hoseLed = 2
 irrigationLed = 1
 pumpLed = 0
+tanklevel1 = 4
+tanklevel2 = 5
+tanklevel3 = 6
 
 stateOff = 0
 stateIrrigationSelected = 1
@@ -51,7 +53,7 @@ stateSelection = stateOff
 functionStateChanged = False
 
 
-def pumpState(state):
+def pumpstate(state):
     if state in (stateOff, stateIrrigationSelected, stateHoseSelected):  # pump state
         pump.duty(pumpOff)
         cooling.on()
@@ -64,102 +66,37 @@ def pumpState(state):
         np[pumpLed] = green
 
     if state == stateIrrigationSelected:  # irrigation selected
-        #pump.duty(pumpOff)
         hose.on()
         irrigation.on()
 
-        #np[pumpLed] = green
         np[irrigationLed] = indigo
         np[hoseLed] = purple
 
     elif state == stateHoseSelected:  # hose selected
-        #pump.duty(pumpOff)
         hose.on()
         irrigation.on()
 
-        #np[pumpLed] = green
         np[irrigationLed] = purple
         np[hoseLed] = indigo
     elif state == stateIrrigationOn:  # irrigation on
-        #pump.duty(pumpOn)
         hose.off()
         irrigation.on()
 
-        #np[pumpLed] = green
         np[irrigationLed] = green
         np[hoseLed] = purple
 
     elif state == stateHoseOn:  # hose on
-        #pump.duty(pumpOn)
         hose.on()
         irrigation.off()
 
-        #np[pumpLed] = green
         np[irrigationLed] = purple
         np[hoseLed] = green
 
     np.write()
 
 
-def isSunrise():
-    returnValue = 0
-    url = "http://192.168.86.240:5000/isSunrise/"
-
-    print(url)
-
-    try:
-        response = urequests.get(url)
-
-        returnValue = int(response.text.replace('\"', ''))
-
-        response.close()
-    except:
-        print('Fail www connect...')
-
-    return returnValue
-
-
-def isSunset():
-    returnValue = 0
-    url = "http://192.168.86.240:5000/isSunset/"
-
-    print(url)
-
-    try:
-        response = urequests.get(url)
-
-        returnValue = int(response.text.replace('\"', ''))
-
-        response.close()
-    except:
-        print('Fail www connect...')
-
-    return returnValue
-
-
-def isHose():
-    returnValue = 0
-    url = "http://192.168.86.240:5000/isHose/"
-
-    print(url)
-
-    try:
-        response = urequests.get(url)
-
-        returnValue = int(response.text.replace('\"', ''))
-
-        response.close()
-    except:
-        remoteHose = False
-        remoteIrrigation = False
-        remotePump = False
-        print('Fail www connect...')
-
-    return returnValue
-
-
-def isStateChanged(state):
-    returnValue = 0
+def isstatechanged(state):
+    returnvalue = 0
     url = "http://192.168.86.240:5000/{0}/".replace('{0}', state)
 
     print(url)
@@ -167,16 +104,37 @@ def isStateChanged(state):
     try:
         response = urequests.get(url)
 
-        returnValue = int(response.text.replace('\"', ''))
+        returnvalue = int(response.text.replace('\"', ''))
 
         response.close()
     except:
-        remoteHose = False
-        remoteIrrigation = False
-        remotePump = False
+        #  remoteHose = False
+        #  remoteIrrigation = False
+        #  remotePump = False
         print('Fail www connect...')
 
-    return returnValue
+    return returnvalue
+
+
+def tankleveldisplay(tanklevel):
+    if tanklevel == 0:
+        np[tanklevel1] = purple
+        np[tanklevel2] = purple
+        np[tanklevel3] = purple
+    elif tanklevel == 1:
+        np[tanklevel1] = purple
+        np[tanklevel2] = purple
+        np[tanklevel3] = green
+    elif tanklevel == 2:
+        np[tanklevel1] = purple
+        np[tanklevel2] = green
+        np[tanklevel3] = green
+    elif tanklevel == 3:
+        np[tanklevel1] = green
+        np[tanklevel2] = green
+        np[tanklevel3] = green
+
+    np.write()
 
 
 def main():  # Pump control
@@ -188,30 +146,31 @@ def main():  # Pump control
 
     np.write()
 
-    pumpState(stateOff)
+    pumpstate(stateOff)
 
     while True:
         # To pump or not to pump
-        #hoseValue = isHose()
-        hoseValue = isStateChanged('isHose')
+        tanklevel = isstatechanged('isLevel')
+        tankleveldisplay(tanklevel)
 
-        #if isSunrise():
-        if isStateChanged('isSunrise'):
-            pumpState(stateIrrigationOn)
-        #elif isSunset():
-        elif isStateChanged('isSunset'):
-            pumpState(stateIrrigationOn)
-        elif hoseValue == 1:
-            pumpState(stateIrrigationSelected)
-        elif hoseValue == 2:
-            pumpState(stateHoseSelected)
-        elif hoseValue == 5:
-            pumpState(stateIrrigationOn)
-        elif hoseValue == 6:
-            pumpState(stateHoseOn)
+        hosevalue = isstatechanged('isHose')
+
+        if isstatechanged('isSunrise'):
+            pumpstate(stateIrrigationOn)
+        elif isstatechanged('isSunset'):
+            pumpstate(stateIrrigationOn)
+        elif hosevalue == 1:
+            pumpstate(stateIrrigationSelected)
+        elif hosevalue == 2:
+            pumpstate(stateHoseSelected)
+        elif hosevalue == 5:
+            pumpstate(stateIrrigationOn)
+        elif hosevalue == 6:
+            pumpstate(stateHoseOn)
         else:
-            pumpState(stateOff)
+            pumpstate(stateOff)
 
         utime.sleep(0.25)
+
 
 main()
