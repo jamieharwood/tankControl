@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+"""
+Trilby Tanks 2018 copyright
+Module: tankControl
+"""
+
 from machine import Pin
 import machine
 import utime
@@ -16,11 +23,10 @@ hose.on()
 irrigation.on()
 cooling.on()
 
-pumpOff = 750  # mid PWM 1500 useconds
-pumpOn = 1000  # max PWM 2000 useaconds
+pumpOff = 750  # mid PWM 1500 u seconds
+pumpOn = 1000  # max PWM 2000 u seconds
 
 np = neopixel.NeoPixel(Pin(neoPin), 8)
-
 neoLow = 0
 neoMid = 64
 neoHi = 255
@@ -41,6 +47,7 @@ pumpLed = 0
 tanklevel1 = 4
 tanklevel2 = 5
 tanklevel3 = 6
+iswetled = 7
 
 stateOff = 0
 stateIrrigationSelected = 1
@@ -48,9 +55,9 @@ stateHoseSelected = 2
 stateIrrigationOn = 3
 stateHoseOn = 4
 
-stateSelection = stateOff
+#  stateSelection = stateOff
 
-functionStateChanged = False
+#  functionStateChanged = False
 
 
 def pumpstate(state):
@@ -136,6 +143,13 @@ def tankleveldisplay(tanklevel):
 
     np.write()
 
+def iswetdisplay(iswet):
+    if iswet:
+        np[iswetled] = blue
+    else:
+        np[iswetled] = yellow
+
+    np.write()
 
 def main():  # Pump control
     # Set initial state
@@ -148,24 +162,29 @@ def main():  # Pump control
 
     pumpstate(stateOff)
 
+    np[iswetled] = tango
+
     while True:
         # To pump or not to pump
+        iswet = isstatechanged('isWet')
+        iswetdisplay(iswet)
+
         tanklevel = isstatechanged('isLevel')
         tankleveldisplay(tanklevel)
 
         hosevalue = isstatechanged('isHose')
 
-        if isstatechanged('isSunrise'):
+        if isstatechanged('isSunrise') and iswet == 0:
             pumpstate(stateIrrigationOn)
-        elif isstatechanged('isSunset'):
+        elif isstatechanged('isSunset') and iswet == 0:
             pumpstate(stateIrrigationOn)
-        elif hosevalue == 1:
+        elif hosevalue == 1:  #  irrigation selected
             pumpstate(stateIrrigationSelected)
-        elif hosevalue == 2:
+        elif hosevalue == 2:  #  hose selected
             pumpstate(stateHoseSelected)
-        elif hosevalue == 5:
+        elif hosevalue == 5:  #  irrigation selected and pump on
             pumpstate(stateIrrigationOn)
-        elif hosevalue == 6:
+        elif hosevalue == 6:  #  hose selected and pump on
             pumpstate(stateHoseOn)
         else:
             pumpstate(stateOff)
