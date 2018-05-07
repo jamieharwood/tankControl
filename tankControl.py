@@ -113,13 +113,23 @@ def settime():
         print('Waiting for time...')
 
     t = time()
-    import machine
-    import utime
+    # import machine
+    # import utime
     tm = utime.localtime(t)
     tm = tm[0:3] + (0,) + tm[3:6] + (0,)
     machine.RTC().datetime(tm)
     print(utime.localtime())
 
+
+def getdeviceid():
+
+    deviceid = ubinascii.hexlify(machine.unique_id()).decode()
+    deviceid = deviceid.replace('b\'', '')
+    deviceid = deviceid.replace('\'', '')
+
+    # print(deviceid)
+
+    return deviceid
 
 def pumpstate(state):
     if state in (stateOff, stateIrrigationSelected, stateHoseSelected):  # pump state
@@ -213,6 +223,28 @@ def isstatechanged(state):
     return returnvalue
 
 
+def heartbeat(sendorid):
+    # returnvalue = 0
+    url = "http://192.168.86.240:5000/sensorHeartbeat/{0}".replace('{0}', sendorid)
+    # url = getFullUrl(state)
+
+    print(url)
+
+    try:
+        response = urequests.get(url)
+
+        # returnvalue = int(response.text.replace('\"', ''))
+
+        response.close()
+    except:
+        #  remoteHose = False
+        #  remoteIrrigation = False
+        #  remotePump = False
+        print('Fail www connect...')
+
+    # return returnvalue
+
+
 def tankleveldisplay(tanklevel):
     if tanklevel == 0:
         np[tanklevel1] = purple
@@ -280,6 +312,10 @@ def main():  # Pump control
     #  sensorValues = {"isSunrise": "0", "isWet": "0", "isSunset": "0", "isLevel": "0", "isHose": "0"}
 
     settime()
+    rtc = RTC()
+    sampletimes = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56]
+    samplehours = [1, 6, 12, 18]
+    gethour = 0
 
     pumpstate(stateOff)
 
@@ -297,8 +333,8 @@ def main():  # Pump control
     iswetdisplay(iswet)
     tankleveldisplay(tanklevel)
 
-    rtc = RTC()
-    sampletimes = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56]
+    deviceid = getdeviceid()
+    heartbeat(deviceid)
 
     while True:
         # To pump or not to pump
@@ -329,10 +365,19 @@ def main():  # Pump control
             getsunrise = 0
 
         if lastMin != currMinute:
+            heartbeat(deviceid)
             isSunrise = getissunrise()
             isSunset = getissunset()
 
             lastMin = currMinute
+
+        if currMinute not in samplehours and gethour == 0:
+            gethour = 1
+
+        if currMinute in samplehours and gethour == 1:
+            gethour = 0
+            local = utime.localtime()
+            settime()
 
         switchsensorvalue = getishose()
 
