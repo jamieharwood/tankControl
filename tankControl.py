@@ -7,6 +7,7 @@ Module: tankControl
 
 from machine import Pin
 from machine import RTC
+import network
 import machine
 import utime
 import varibles as vars
@@ -14,20 +15,9 @@ import neopixel
 import urequests
 import ubinascii
 import ujson
-
-try:
-    import usocket as socket
-except:
-    import socket
-try:
-    import ustruct as struct
-except:
-    import struct
-
-# (date(2000, 1, 1) - date(1900, 1, 1)).days * 24*60*60
-NTP_DELTA = 3155673600
-
-host = "0.uk.pool.ntp.org"
+from heartbeatClass import HeartBeat
+from timeClass import TimeTank
+from SensorRegistationClass import SensorRegistation
 
 restHost = "http://192.168.86.240:5000/{0}/"
 
@@ -86,40 +76,24 @@ switchSensorHose = 2
 switchSensorIrrigationAndPump = 5
 switchSensorHoseAndPump = 6
 
+"""
+def registerControl(deviceid, sensorname):
+    url = "http://192.168.86.240:5000/sensorStateWrite/{0}/{1}/{2}"
+    url = url.replace('{0}', deviceid)  # sensor id
+    url = url.replace('{1}', sensorname)  # sensor type
+    url = url.replace('{2}', 'NA')  # sensor value
 
-def time():
+    print(url)
+
     try:
-        NTP_QUERY = bytearray(48)
-        NTP_QUERY[0] = 0x1b
-        addr = socket.getaddrinfo(host, 123)[0][-1]
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(1)
-        res = s.sendto(NTP_QUERY, addr)
-        msg = s.recv(48)
-        s.close()
-        val = struct.unpack("!I", msg[40:44])[0]
+        response = urequests.get(url)
 
-        return val - NTP_DELTA
-    except OSError:
+        print(response.text)
 
-        return 0
-
-# There's currently no timezone support in MicroPython, so
-# utime.localtime() will return UTC time (as if it was .gmtime())
-
-
-def settime():
-    while time() == 0:
-        print('Waiting for time...')
-
-    t = time()
-    # import machine
-    # import utime
-    tm = utime.localtime(t)
-    tm = tm[0:3] + (0,) + tm[3:6] + (0,)
-    machine.RTC().datetime(tm)
-    print(utime.localtime())
-
+        response.close()
+    except:
+        print('Fail www connect...')
+"""
 
 def getdeviceid():
 
@@ -130,6 +104,7 @@ def getdeviceid():
     # print(deviceid)
 
     return deviceid
+
 
 def pumpstate(state):
     if state in (stateOff, stateIrrigationSelected, stateHoseSelected):  # pump state
@@ -223,28 +198,6 @@ def isstatechanged(state):
     return returnvalue
 
 
-def heartbeat(sendorid):
-    # returnvalue = 0
-    url = "http://192.168.86.240:5000/sensorHeartbeat/{0}".replace('{0}', sendorid)
-    # url = getFullUrl(state)
-
-    print(url)
-
-    try:
-        response = urequests.get(url)
-
-        # returnvalue = int(response.text.replace('\"', ''))
-
-        response.close()
-    except:
-        #  remoteHose = False
-        #  remoteIrrigation = False
-        #  remotePump = False
-        print('Fail www connect...')
-
-    # return returnvalue
-
-
 def tankleveldisplay(tanklevel):
     if tanklevel == 0:
         np[tanklevel1] = purple
@@ -295,7 +248,44 @@ def getissunset():
     return isstatechanged('isSunset')
 
 
-def main():  # Pump control
+def getip():
+    sta_if = network.WLAN(network.STA_IF)
+    temp = sta_if.ifconfig()
+
+    return temp[0]
+
+
+def testfornetwork():
+    sta_if = network.WLAN(network.STA_IF)
+    while not sta_if.active():
+        print('Waiting for Wifi')
+
+    while '0.0.0.0' == getip():
+        print('Waiting for IP')
+
+
+def main():
+    testfornetwork()
+
+    debug = False
+    sensorname = 'control'
+
+    if debug:
+        sensorname += '-debug'
+
+    deviceid = getdeviceid()
+
+    mySensorRegistation = SensorRegistation(deviceid)
+    mySensorRegistation.register(sensorname, 'Hardware', 'JH')
+
+    myheartbeat = HeartBeat(deviceid)
+    myheartbeat.beat()
+
+    mytime = TimeTank(deviceid)
+    mytime.settime(1)
+
+    # registerControl(deviceid, sensorname)
+
     currTime = 0
     lastTime = 0
     lastMin = 0
@@ -311,7 +301,7 @@ def main():  # Pump control
 
     #  sensorValues = {"isSunrise": "0", "isWet": "0", "isSunset": "0", "isLevel": "0", "isHose": "0"}
 
-    settime()
+    mytime.settime(1)
     rtc = RTC()
     sampletimes = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56]
     samplehours = [1, 6, 12, 18]
@@ -332,9 +322,6 @@ def main():  # Pump control
 
     iswetdisplay(iswet)
     tankleveldisplay(tanklevel)
-
-    deviceid = getdeviceid()
-    heartbeat(deviceid)
 
     while True:
         # To pump or not to pump
@@ -360,24 +347,24 @@ def main():  # Pump control
             getsunrise = 1
 
         if currHour == 0 and currMinute == 1 and getsunrise == 1:
-            settime()
+            mytime.settime(1)
 
             getsunrise = 0
 
         if lastMin != currMinute:
-            heartbeat(deviceid)
+            myheartbeat.beat()
             isSunrise = getissunrise()
             isSunset = getissunset()
 
             lastMin = currMinute
 
-        if currMinute not in samplehours and gethour == 0:
+        if currHour not in samplehours and gethour == 0:
             gethour = 1
 
-        if currMinute in samplehours and gethour == 1:
+        if currHour in samplehours and gethour == 1:
             gethour = 0
             local = utime.localtime()
-            settime()
+            mytime.settime(1)
 
         switchsensorvalue = getishose()
 
