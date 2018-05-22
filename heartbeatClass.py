@@ -4,32 +4,37 @@ import urequests
 import network
 
 class HeartBeat:
-    deviceid = ''
-    ip = ''
+    __resthost = ''
+    __deviceid = ''
+    __ip = ''
+    __rssi = 0
 
-    def __init__(self, deviceid):
-        self.deviceid = deviceid
+    def __init__(self, resthost, deviceid):
+        self.__resthost = resthost
+        self.__deviceid = deviceid
         self.__getip__()
 
-    def __call__(self, deviceid):
-        self.deviceid = deviceid
-        self.__getip__()
+    def __call__(self):
+        pass
 
     def __getip__(self):
 
         sta_if = network.WLAN(network.STA_IF)
+        self.__rssi = sta_if.status('rssi')
+
         if sta_if.active():
             temp = sta_if.ifconfig()
-            self.ip = temp[0]
+            self.__ip = temp[0]
         else:
-            self.ip = '0.0.0.0'
+            self.__ip = '0.0.0.0'
 
     def beat(self):
         self.__getip__()
 
-        url = "http://192.168.86.240:5000/sensorHeartbeatIP/{0}/{1}"
-        url = url.replace('{0}', self.deviceid)
-        url = url.replace('{1}', self.ip)
+        url = self.__resthost + "/sensorHeartbeatIP/{0}/{1}/{2}"
+        url = url.replace('{0}', self.__deviceid)
+        url = url.replace('{1}', self.__ip)
+        url = url.replace('{2}', str(self.__rssi))
 
         print(url)
 

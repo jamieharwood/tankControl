@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import neopixel
 from machine import Pin
 
@@ -21,22 +23,21 @@ class NeoPixel:
                'purple': (__neoMid, __neoLow, __neoMid),
                'black': (__neoLow, __neoLow, __neoLow)}
 
-
-    def __init__(self, neopin = 15, neocount = 4):
+    def __init__(self, neopin=15, neocount=4):
         self.__neopin = neopin
         self.__neocount = neocount
 
         self.__np = neopixel.NeoPixel(Pin(self.__neopin), self.__neocount)
 
-
     def __call__(self):
-        print('')
+        pass
 
-    def setcolour(self, pin, newcolour):
-        self.__np[pin] = newcolour
+    def colour(self, pin, newcolour, update=False):
+        self.__np[pin] = self.colours[newcolour.lower()]
 
+        if update:
+            self.update()
 
-    def update(self):
+    def write(self):
         self.__np.write()
-
 

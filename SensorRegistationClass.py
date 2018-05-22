@@ -4,18 +4,20 @@ import urequests
 
 
 class SensorRegistation:
-    deviceid = ''
+    __resthost = ''
+    __deviceid = ''
 
-    def __init__(self, deviceid):
-        self.deviceid = deviceid
+    def __init__(self, resthost, deviceid):
+        self.__resthost = resthost
+        self.__deviceid = deviceid
 
-    def __call__(self, deviceid):
-        self.deviceid = deviceid
+    def __call__(self):
+        pass
 
     def register(self, sensortype, sensormedium, provider):
 
-        url = "http://192.168.86.240:5000/sensorRegistration/{0}/{1}/{2}/{3}"
-        url = url.replace('{0}', self.deviceid)
+        url = self.__resthost + "/sensorRegistration/{0}/{1}/{2}/{3}"
+        url = url.replace('{0}', self.__deviceid)
         url = url.replace('{1}', sensortype)
         url = url.replace('{2}', sensormedium)
         url = url.replace('{3}', provider)

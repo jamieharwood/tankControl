@@ -13,18 +13,21 @@ except:
     import struct
 
 class TimeTank:
+    __resthost = ''
     deviceid = ''
 
     # (date(2000, 1, 1) - date(1900, 1, 1)).days * 24*60*60
-    NTP_DELTA = 3155673600
+    addBST = 3600
+    NTP_DELTA = 3155673600 - addBST
 
     host = "0.uk.pool.ntp.org"
 
-    def __init__(self, deviceid):
+    def __init__(self, resthost='', deviceid=0):
+        self.__resthost = resthost
         self.deviceid = deviceid
 
-    def __call__(self, deviceid):
-        self.deviceid = deviceid
+    def __call__(self):
+        pass
 
     def gettime(self):
         try:
@@ -43,7 +46,8 @@ class TimeTank:
 
             return 0
 
-    def settime(self, metheod):
+    def settime(self, metheod=1):
+        returnvalue = False
 
         if metheod == 0:
             url = "http://192.168.86.240:5000/gettime/"
@@ -68,10 +72,20 @@ class TimeTank:
                 print('Waiting for time...')
 
             t = self.gettime()
-            tm = utime.localtime(t)
-            tm = tm[0:3] + (0,) + tm[3:6] + (0,)
+            try:
+                tm = utime.localtime(t)
+                tm = tm[0:3] + (0,) + tm[3:6] + (0,)
 
-            machine.RTC().datetime(tm)
+                machine.RTC().datetime(tm)
 
-            print(utime.localtime())
+                print('tm[0:3]=' + str(tm[0:3]) + ' tm[3:6]=' + str(tm[3:6]))
+
+                print(utime.localtime())
+
+                if tm[0] != 2000:
+                    returnvalue = True
+            except:
+                returnvalue = False
+
+        return returnvalue
 
