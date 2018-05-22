@@ -72,17 +72,20 @@ class TimeTank:
                 print('Waiting for time...')
 
             t = self.gettime()
-            tm = utime.localtime(t)
-            tm = tm[0:3] + (0,) + tm[3:6] + (0,)
+            try:
+                tm = utime.localtime(t)
+                tm = tm[0:3] + (0,) + tm[3:6] + (0,)
 
-            machine.RTC().datetime(tm)
+                machine.RTC().datetime(tm)
 
-            print('tm[0:3]=' + str(tm[0:3]) + ' tm[3:6]=' + str(tm[3:6]))
+                print('tm[0:3]=' + str(tm[0:3]) + ' tm[3:6]=' + str(tm[3:6]))
 
-            print(utime.localtime())
+                print(utime.localtime())
 
-            if tm[0] != 2000:
-                returnvalue = True
+                if tm[0] != 2000:
+                    returnvalue = True
+            except:
+                returnvalue = False
 
         return returnvalue
 

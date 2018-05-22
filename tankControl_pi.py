@@ -11,7 +11,8 @@ import datetime
 import subprocess
 import pytz
 
-myTimeZone= pytz.timezone('Europe/London')
+myTimeZone = pytz.timezone('Europe/London')
+
 
 def checkProcess(processname):
     procList = subprocess.getstatusoutput('ps ax | grep {0} | grep -v grep | awk \'{print $1}\''.replace('{0}',  processname))
@@ -24,6 +25,7 @@ def checkProcess(processname):
             quit()
         else:
             print('run {0}'.replace('{0}',  processname))
+
 
 def getStatusTrendText(trend):
     nowTime = datetime.datetime.now(myTimeZone)
@@ -38,6 +40,7 @@ def getStatusTrendText(trend):
     
     return returnString
 
+
 def getStatusText(sunrise,  sunset):
     nowTime = datetime.datetime.now(myTimeZone)
         
@@ -50,6 +53,7 @@ def getStatusText(sunrise,  sunset):
     
     return returnString
     
+
 def main():
     # Setup
     checkProcess('control.py')
