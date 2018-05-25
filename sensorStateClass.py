@@ -2,6 +2,7 @@
 
 import psycopg2
 
+
 class sensorState:
     dbIPaddress = 'localhost'
     dbname = 'tank'
@@ -15,21 +16,21 @@ class sensorState:
     sensorValue = 0.0
 
     def __init__(self):
-        self.dbconn = psycopg2.connect(host = self.dbIPaddress, dbname = self.dbname, user = self.user, password = self.password)
+        self.dbconn = psycopg2.connect(host=self.dbIPaddress, dbname=self.dbname, user=self.user, password=self.password)
         self.dbconn.autocommit = True
         self.dbCur = self.dbconn.cursor()
         
-        #self.getStatus()
+        # self.getStatus()
 
     def __call__(self):
-        self.dbconn = psycopg2.connect(host = self.dbIPaddress, dbname = self.dbname, user = self.user, password = self.password)
+        self.dbconn = psycopg2.connect(host=self.dbIPaddress, dbname=self.dbname, user=self.user, password=self.password)
         self.dbconn.autocommit = True
         self.dbCur = self.dbconn.cursor()
 
-    def getStatus(self,  sensorId):
+    def getStatus(self, sensorId):
         self.sensorId = sensorId
         
-        sql = "select * from sensorStatus where sensorid = '{0}'".replace('{0}',  self.sensorId)
+        sql = "select * from sensorStatus where sensorid = '{0}'".replace('{0}', self.sensorId)
         self.dbCur.execute(sql)
         rows = self.dbCur.fetchall()
         
@@ -39,9 +40,9 @@ class sensorState:
     
     def setSatus(self):
         sql = "insert into sensorStates (sensorid, sensortype, sensorvalue, enabled) values( '{0}', '{1}', {2}, 1 )"
-        sql = sql.replace('{0}',  self.sensorId)
-        sql = sql.replace('{1}',  self.sensorType)
-        sql = sql.replace('{2}',  str(self.sensorvalue))
+        sql = sql.replace('{0}', self.sensorId)
+        sql = sql.replace('{1}', self.sensorType)
+        sql = sql.replace('{2}', str(self.sensorvalue))
         
         print(sql)
         
@@ -49,33 +50,33 @@ class sensorState:
 
     def setHeartbeat(self):
         sql = "insert into sensorHeartbeats (sensorid) values('{0}')"
-        sql = sql.replace('{0}',  self.sensorId)
+        sql = sql.replace('{0}', self.sensorId)
         
         print(sql)
         
         self.dbCur.execute(sql)
 
-# sensorId
+    # sensorId
     def setSensorID(self, sensorId):
-            self.sensorId = sensorId
-            #self.setSatus()
-            
+        self.sensorId = sensorId
+        # self.setSatus()
+
     def getSensorID(self):
-            return self.sensorId
+        return self.sensorId
     
-# sensorType
+    # sensorType
     def setSensorType(self, sensorType):
-            self.sensorType = sensorType
-            #self.setSatus()
+        self.sensorType = sensorType
+        # self.setSatus()
             
     def getSensorType(self):
-            return self.sensorType
+        return self.sensorType
 
-# sensorvalue
+    # sensorvalue
     def setSensorValue(self, sensorvalue):
-            self.sensorvalue = sensorvalue
-            #self.setSatus()
+        self.sensorvalue = sensorvalue
+        # self.setSatus()
             
     def getSensorValue(self):
-            return self.sensorvalue
+        return self.sensorvalue
 

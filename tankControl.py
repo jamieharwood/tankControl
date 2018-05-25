@@ -10,8 +10,8 @@ from machine import RTC
 import network
 import machine
 import utime
-import varibles as vars
-import neopixel
+# import varibles as vars
+# import neopixel
 import urequests
 import ubinascii
 import ujson
@@ -19,6 +19,9 @@ from heartbeatClass import HeartBeat
 from timeClass import TimeTank
 from SensorRegistationClass import SensorRegistation
 from NeoPixelClass import NeoPixel
+from LogClass import Log
+
+__log = Log()
 
 restHost = "http://192.168.86.240:5000"
 
@@ -223,14 +226,20 @@ def main():
 
     deviceid = getdeviceid()
 
+    global __log
+    __log = Log(restHost, deviceid)
+
     mySensorRegistation = SensorRegistation(restHost, deviceid)
     mySensorRegistation.register(sensorname, 'Hardware', 'JH')
+    __log.printl('registered: mySensorRegistation.register')
 
     myheartbeat = HeartBeat(restHost, deviceid)
     myheartbeat.beat()
+    __log.printl('registered: myheartbeat.beat')
 
     mytime = TimeTank(deviceid)
     mytime.settime(1)
+    __log.printl('registered: mytime.settime')
 
     currTime = 0
     lastTime = 0
@@ -276,6 +285,7 @@ def main():
             getdisplay = 1
 
         if currMinute in sampletimes and getdisplay == 1:
+            __log.printl('sample times functions')
             isWet = isstatechanged('isWet')
             iswetdisplay(iswet)
 
@@ -288,11 +298,14 @@ def main():
             getsunrise = 1
 
         if currHour == 0 and currMinute == 1 and getsunrise == 1:
+            __log.printl('Hourly functions')
             mytime.settime(1)
+            __log.printl('registered: mytime.settime')
 
             getsunrise = 0
 
         if lastMin != currMinute:
+            __log.printl('Minute functions')
             myheartbeat.beat()
             isSunrise = isstatechanged('isSunrise')
             isSunset = isstatechanged('isSunset')
@@ -303,6 +316,7 @@ def main():
             gethour = 1
 
         if currHour in samplehours and gethour == 1:
+            __log.printl('Sample hour functions')
             gethour = 0
             local = utime.localtime()
             mytime.settime(1)
