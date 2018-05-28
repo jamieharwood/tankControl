@@ -43,6 +43,7 @@ class Log:
         timeNow = rtc.datetime()
         __currHour = timeNow[4]
         __currMinute = timeNow[5]
+        self.__getip__()
 
         if self.__logto == 0:
             outbuffer = '['
@@ -51,7 +52,6 @@ class Log:
             outbuffer += '\'' + self.__ip + '\', '
             outbuffer += '\'' + str(self.__rssi) + '\', '
             outbuffer += '\'' + str(esp.freemem()) + '\', '
-            outbuffer += '\'' + self.__resthost + '\', '
             outbuffer += '\'' + outstring + '\', '
             outbuffer += ']\n'
 
@@ -62,13 +62,12 @@ class Log:
             # api.add_resource(LogEvents,
             # '/logEvent/<string:sensorId>/<string:sensorIp>/<string:rssi>/<string:freemem>/<string:resthost>/<string:logtext>')
 
-            url = self.__resthost + "/logEvent/{0}/{1}/{2}/{3}/{4}/{5}"
+            url = self.__resthost + "/logEvent/{0}/{1}/{2}/{3}/{4}"
             url = url.replace('{0}', self.__deviceid)
             url = url.replace('{1}', self.__ip)
             url = url.replace('{2}', str(self.__rssi))
             url = url.replace('{3}', str(esp.freemem()))
-            url = url.replace('{4}', 'need_to_encode_this')  # self.__resthost
-            url = url.replace('{5}', outstring.replace(' ', '_'))
+            url = url.replace('{4}', outstring.replace(' ', '_'))
 
             print(url)
 
