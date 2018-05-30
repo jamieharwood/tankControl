@@ -12,28 +12,48 @@ try:
 except:
     import struct
 
+
 class TimeTank:
+    __printl = None
     __resthost = ''
-    deviceid = ''
+    __deviceid = ''
 
     # (date(2000, 1, 1) - date(1900, 1, 1)).days * 24*60*60
     addBST = 3600
     NTP_DELTA = 3155673600 - addBST
 
-    host = "0.uk.pool.ntp.org"
+    __hostpointer = 0
+    __host = "{0}.uk.pool.ntp.org"
 
-    def __init__(self, resthost='', deviceid=0):
+    def __init__(self, resthost='', deviceid=0, logfunc=None):
         self.__resthost = resthost
-        self.deviceid = deviceid
+        self.__deviceid = deviceid
+
+        if logfunc is None:
+            __printl = self.funcprintl
+        else:
+            __printl = logfunc
 
     def __call__(self):
         pass
 
+    def funcprintl(self, statustext):
+        print(statustext)
+
     def gettime(self):
         try:
+            # cycle through the different uk.pool.ntp.org servers
+            temphost = self.__host.replace('{0}', str(self.__hostpointer))
+            print('Get time from: ' + temphost)
+
+            self.__hostpointer += 1
+            if self.__hostpointer > 3:
+                self.__hostpointer = 0
+            # cycle through the different uk.pool.ntp.org servers
+
             NTP_QUERY = bytearray(48)
             NTP_QUERY[0] = 0x1b
-            addr = socket.getaddrinfo(self.host, 123)[0][-1]
+            addr = socket.getaddrinfo(temphost, 123)[0][-1]
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.settimeout(1)
             res = s.sendto(NTP_QUERY, addr)
@@ -61,10 +81,7 @@ class TimeTank:
 
                 response.close()
             except:
-                #  remoteHose = False
-                #  remoteIrrigation = False
-                #  remotePump = False
-                print('Fail www connect...')
+                print('Fail www connect: ' + url)
 
             # return returnvalue
         else:
@@ -79,10 +96,10 @@ class TimeTank:
                 machine.RTC().datetime(tm)
 
                 print('tm[0:3]=' + str(tm[0:3]) + ' tm[3:6]=' + str(tm[3:6]))
-
+                print('tm[0] = (' + str(tm[0]) + ')')
                 print(utime.localtime())
 
-                if tm[0] != 2000:
+                if int(tm[0]) != int(2000):
                     returnvalue = True
             except:
                 returnvalue = False
