@@ -7,77 +7,78 @@ Module: tankControl
 
 from machine import Pin
 from machine import RTC
-from machine import I2C
 from machine import PWM
 import network
 import machine
-import ssd1306
 import utime
-# import varibles as vars
-# import neopixel
 import urequests
 import ubinascii
-import ujson
 from heartbeatClass import HeartBeat
 from timeClass import TimeTank
 from SensorRegistationClass import SensorRegistation
 from NeoPixelClass import NeoPixel
 from LogClass import Log
 
-i2c = I2C(-1, Pin(5), Pin(4))
-__oled = ssd1306.SSD1306_I2C(128, 32, i2c)
-__spinner = 0
-__statustest = ''
-__top = 0
 __log = Log()
 
-restHost = "http://192.168.86.240:5000"
+__restHost = "http://192.168.86.240:5000"
 
 __sensorname = ''
 __deviceid = ''
 
-neoPin = 15  # D8
-pump = PWM(Pin(13), freq=500)  # D7
-hose = Pin(12, Pin.OUT)  # D6
-irrigation = Pin(0, Pin.OUT)  # D3
-cooling = Pin(2, Pin.OUT)  # D4
+# __future1 = Pin(16, Pin.OUT)  # D0
+__irrigation = Pin(5, Pin.OUT)  # D1
+# __future2 = Pin(4, Pin.OUT)  # D2
+# __future3 = Pin(0, Pin.OUT)  # D3
+__cooling = Pin(2, Pin.OUT)  # D4
+# __future4 = Pin(14, Pin.OUT)  # D5
+__hose = Pin(12, Pin.OUT)  # D6
+__pump = PWM(Pin(13), freq=500)  # D7
+__neoPin = 15  # D8
 
-hose.on()
-irrigation.on()
-cooling.on()
+__hose.on()
+__irrigation.on()
+__cooling.on()
 
-pumpOff = 750  # mid PWM 1500 u seconds
-pumpOn = 1000  # max PWM 2000 u seconds
+__pumpOff = 750  # mid PWM 1500 u seconds
+__pumpOn = 1000  # max PWM 2000 u seconds
 
-np = NeoPixel(neoPin, 8)
+__np = NeoPixel(__neoPin, 8)
 
-powerLed = 3
-hoseLed = 2
-irrigationLed = 1
-pumpLed = 0
+__powerLed = 3
+__hoseLed = 2
+__irrigationLed = 1
+__pumpLed = 0
 
 # Set initial state
-np.colour(powerLed, 'red')
-np.colour(irrigationLed, 'black')
-np.colour(hoseLed, 'black')
-np.colour(pumpLed, 'black')
-np.write()
+__np.colour(__powerLed, 'red')
+__np.colour(__irrigationLed, 'black')
+__np.colour(__hoseLed, 'black')
+__np.colour(__pumpLed, 'black')
+__np.write()
 
-tanklevel1 = 4
-tanklevel2 = 5
-tanklevel3 = 6
-iswetled = 7
+__tanklevel1 = 4
+__tanklevel2 = 5
+__tanklevel3 = 6
+__iswetled = 7
 
-stateOff = 0
-stateIrrigationSelected = 1
-stateHoseSelected = 2
-stateIrrigationOn = 3
-stateHoseOn = 4
+__stateOff = 0
+__stateIrrigationSelected = 1
+__stateHoseSelected = 2
+__stateIrrigationOn = 3
+__stateHoseOn = 4
 
-switchSensorIrrigation = 1
-switchSensorHose = 2
-switchSensorIrrigationAndPump = 5
-switchSensorHoseAndPump = 6
+__switchSensorIrrigation = 1
+__switchSensorHose = 2
+__switchSensorIrrigationAndPump = 5
+__switchSensorHoseAndPump = 6
+
+__debugcode = False
+
+
+def printd(debugtext):
+    if __debugcode:
+        print(debugtext)
 
 
 def getdeviceid():
@@ -90,86 +91,49 @@ def getdeviceid():
 
 
 def pumpstate(state):
-    if state in (stateOff, stateIrrigationSelected, stateHoseSelected):  # pump state
-        pump.duty(pumpOff)
-        cooling.on()
+    if state in (__stateOff, __stateIrrigationSelected, __stateHoseSelected):  # pump state
+        __pump.duty(__pumpOff)
+        __cooling.on()
 
-        np.colour(pumpLed, 'purple')
+        __np.colour(__pumpLed, 'purple')
     else:
-        pump.duty(pumpOn)
-        cooling.off()
+        __pump.duty(__pumpOn)
+        __cooling.off()
 
-        np.colour(pumpLed, 'green')
+        __np.colour(__pumpLed, 'green')
 
-    if state == stateIrrigationSelected:  # irrigation selected
-        hose.on()
-        irrigation.on()
+    if state == __stateIrrigationSelected:  # irrigation selected
+        printd('state == __stateIrrigationSelected')
+        __hose.on()
+        __irrigation.on()
 
-        np.colour(irrigationLed, 'indigo')
-        np.colour(hoseLed, 'purple')
+        __np.colour(__irrigationLed, 'indigo')
+        __np.colour(__hoseLed, 'purple')
 
-    elif state == stateHoseSelected:  # hose selected
-        hose.on()
-        irrigation.on()
+    elif state == __stateHoseSelected:  # hose selected
+        printd('state == __stateHoseSelected')
+        __hose.on()
+        __irrigation.on()
 
-        np.colour(irrigationLed, 'purple')
-        np.colour(hoseLed, 'indigo')
-    elif state == stateIrrigationOn:  # irrigation on
-        hose.off()
-        irrigation.on()
+        __np.colour(__irrigationLed, 'purple')
+        __np.colour(__hoseLed, 'indigo')
+    elif state == __stateIrrigationOn:  # irrigation on
+        printd('state == __stateIrrigationOn')
+        __hose.off()
+        __irrigation.on()
 
-        np.colour(irrigationLed, 'green')
-        np.colour(hoseLed, 'purple')
+        __np.colour(__irrigationLed, 'green')
+        __np.colour(__hoseLed, 'purple')
 
-    elif state == stateHoseOn:  # hose on
-        hose.on()
-        irrigation.off()
+    elif state == __stateHoseOn:  # hose on
+        printd('state == __stateHoseOn')
+        __hose.on()
+        __irrigation.off()
 
-        np.colour(irrigationLed, 'purple')
-        np.colour(hoseLed, 'green')
+        __np.colour(__irrigationLed, 'purple')
+        __np.colour(__hoseLed, 'green')
 
-    np.write()
-
-
-def getFullUrl(restFunction):
-    # return restHost.replace('{0}', restFunction)
-
-    return restHost + '/' + restFunction
-
-
-def isstatechangedall():
-    returnvalue = -1
-    timecount = 0
-
-    while returnvalue == -1:
-        url = getFullUrl('getControlStates')
-
-        print(url)
-
-        try:
-            response = urequests.get(url)
-
-            try:
-                sensorData = ujson.loads(response)
-
-                returnvalue = sensorData
-                # print('returnvalue=' + str(returnvalue))
-
-            except:
-                print("JSON error")
-
-            response.close()
-            break
-        except:
-            print('isstatechangedall: Fail www connection attempt ' + str(timecount))
-
-            timecount += 1
-
-            if timecount > 10:
-                import machine
-                machine.reset()
-
-    return returnvalue
+    __np.write()
 
 
 def isstatechanged(state):
@@ -177,8 +141,7 @@ def isstatechanged(state):
     timecount = 0
 
     while returnvalue == -1:
-        # url = "http://192.168.86.240:5000/{0}/".replace('{0}', state)
-        url = getFullUrl(state)
+        url = __restHost + '/' + state
 
         print(url)
 
@@ -186,54 +149,64 @@ def isstatechanged(state):
             response = urequests.get(url)
 
             returnvalue = int(response.text.replace('\"', ''))
-            # print('returnvalue=' + str(returnvalue))
 
             response.close()
 
             break
         except:
 
-            print('isstatechanged: Fail www connection attempt ' + str(timecount))
+            __log.printl('isstatechanged: Fail www connection attempt ' + str(timecount))
+
+            sta_if = network.WLAN(network.STA_IF)
+
+            if not sta_if.active():
+                __log.printl('wifi not active.')
+                sta_if.active(True)
+                sta_if.connect('dodger', 'skinner2263')
+                testfornetwork()
+                __log.printl('wifi reconnected.')
 
             timecount += 1
 
             if timecount > 10:
                 import machine
                 machine.reset()
+                returnvalue = -1
+                break
 
-            returnvalue = False
+            # returnvalue = False
 
     return returnvalue
 
 
 def tankleveldisplay(tanklevel):
     if tanklevel == 0:
-        np.colour(tanklevel1, 'purple')
-        np.colour(tanklevel2, 'purple')
-        np.colour(tanklevel3, 'purple')
+        __np.colour(__tanklevel1, 'purple')
+        __np.colour(__tanklevel2, 'purple')
+        __np.colour(__tanklevel3, 'purple')
     elif tanklevel == 1:
-        np.colour(tanklevel1, 'purple')
-        np.colour(tanklevel2, 'purple')
-        np.colour(tanklevel3, 'green')
+        __np.colour(__tanklevel1, 'purple')
+        __np.colour(__tanklevel2, 'purple')
+        __np.colour(__tanklevel3, 'green')
     elif tanklevel == 2:
-        np.colour(tanklevel1, 'purple')
-        np.colour(tanklevel2, 'green')
-        np.colour(tanklevel3, 'green')
+        __np.colour(__tanklevel1, 'purple')
+        __np.colour(__tanklevel2, 'green')
+        __np.colour(__tanklevel3, 'green')
     elif tanklevel == 3:
-        np.colour(tanklevel1, 'green')
-        np.colour(tanklevel2, 'green')
-        np.colour(tanklevel3, 'green')
+        __np.colour(__tanklevel1, 'green')
+        __np.colour(__tanklevel2, 'green')
+        __np.colour(__tanklevel3, 'green')
 
-    np.write()
+    __np.write()
 
 
 def iswetdisplay(iswet):
     if iswet:
-        np.colour(iswetled, 'blue')
+        __np.colour(__iswetled, 'blue')
     else:
-        np.colour(iswetled, 'yellow')
+        __np.colour(__iswetled, 'yellow')
 
-    np.write()
+    __np.write()
 
 
 def getip():
@@ -245,46 +218,12 @@ def getip():
 
 def testfornetwork():
     sta_if = network.WLAN(network.STA_IF)
+
     while not sta_if.active():
-        print('Waiting for Wifi')
+        printd('Waiting for Wifi')
 
     while '0.0.0.0' == getip():
-        print('Waiting for IP')
-
-
-def printoled(statustest, top=0):
-    global __statustest, __top
-
-    __top = top
-    __statustest = statustest
-
-    __oled.fill(0)
-    __oled.text(__statustest, 0, __top)
-    __oled.show()
-
-
-def spinneroled():
-    global __deviceid, __sensorname,__spinner, __top
-
-    __oled.fill(0)
-
-    if __spinner == 0:
-        __oled.text('-', 120, 22)
-    elif __spinner == 1:
-        __oled.text('/', 120, 22)
-    elif __spinner == 2:
-        __oled.text('|', 120, 22)
-    elif __spinner == 3:
-        __oled.text('\\', 120, 22)
-
-    __oled.text(__statustest, 0, __top)
-    __oled.text(__sensorname, 0, 12)
-    __oled.text('dev: ' + __deviceid, 0, 22)
-    __oled.show()
-
-    __spinner += 1
-    if __spinner > 3:
-        __spinner = 0
+        printd('Waiting for IP')
 
 
 def settime(mytime):
@@ -300,39 +239,31 @@ def settime(mytime):
 def main():
     global __deviceid, __sensorname, __log
 
-    debug = True
+    debug = False
     __sensorname = 'control'
-
-    if debug:
-        __sensorname += '-debug'
-
     __deviceid = getdeviceid()
 
-    __log = Log(restHost, __deviceid)
-    printoled('tankControl v1')
+    if debug:
+        __sensorname += "-" + __deviceid + '-debug'
+
+    __log = Log(__restHost, __deviceid)
 
     testfornetwork()
     __log.printl('Test for network.')
-    spinneroled()
 
     __log.printl('startup: tankControl v1: ' + __sensorname)
-    spinneroled()
 
-    mySensorRegistation = SensorRegistation(restHost, __deviceid)
+    mySensorRegistation = SensorRegistation(__restHost, __deviceid)
     mySensorRegistation.register(__sensorname, 'Hardware', 'JH')
     __log.printl('registered: mySensorRegistation.register')
-    spinneroled()
 
-    myheartbeat = HeartBeat(restHost, __deviceid)
-    myheartbeat.beat()
-    __log.printl('registered: myheartbeat.beat')
-    spinneroled()
+    myheartbeat = HeartBeat(__restHost, __deviceid)
+    myheartbeat.longbeat()
+    __log.printl('registered: myheartbeat.longbeat')
 
     mytime = TimeTank(__deviceid, __log.printl)
     settime(mytime)
-    # mytime.settime(1)
     __log.printl('registered: mytime.settime')
-    spinneroled()
 
     currTime = 0
     lastTime = 0
@@ -348,16 +279,14 @@ def main():
     getdisplay = 0
     getsunrise = 0
 
-    # settime(mytime)
-    # mytime.settime(1)
     rtc = RTC()
     sampletimes = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56]
     samplehours = [1, 6, 12, 18]
     gethour = 0
 
-    pumpstate(stateOff)
+    pumpstate(__stateOff)
 
-    np.colour(iswetled, 'tango')
+    __np.colour(__iswetled, 'tango')
 
     # Set initial status
     isWet = isstatechanged('isWet')
@@ -378,15 +307,14 @@ def main():
 
         if currSecond != lastSecond:
             lastSecond = currSecond
-            spinneroled()
 
         if currMinute not in sampletimes and getdisplay == 0:
             getdisplay = 1
 
         if currMinute in sampletimes and getdisplay == 1:
             getdisplay = 0
-
             __log.printl('sample times functions')
+
             isWet = isstatechanged('isWet')
             iswetdisplay(iswet)
 
@@ -398,18 +326,19 @@ def main():
 
         if currHour == 0 and currMinute == 1 and getsunrise == 1:
             getsunrise = 0
+            __log.printl('Midnight functions')
 
-            __log.printl('Hourly functions')
             settime(mytime)
             local = utime.localtime()
-            # mytime.settime(1)
-            __log.printl('registered: mytime.settime')
+            __log.printl('midnight: mytime.settime')
 
         if lastMin != currMinute:
             lastMin = currMinute
-
             __log.printl('Minute functions')
-            myheartbeat.beat()
+
+            myheartbeat.longbeat()
+            __log.printl('Minute functions: myheartbeat.longbeat')
+
             isSunrise = isstatechanged('isSunrise')
             isSunset = isstatechanged('isSunset')
 
@@ -418,37 +347,45 @@ def main():
 
         if currHour in samplehours and gethour == 1:
             gethour = 0
-
             __log.printl('Sample hour functions')
 
             settime(mytime)
             local = utime.localtime()
-            # mytime.settime(1)
 
         switchsensorvalue = isstatechanged('isHose')
 
         if tanklevel != 0:  # not empty tank
             if isSunrise and iswet == 0:
-                pumpstate(stateIrrigationOn)
+                printd('isSunrise and iswet == 0')
+                pumpstate(__stateIrrigationOn)
 
             elif isSunset and iswet == 0:
-                pumpstate(stateIrrigationOn)
+                printd('isSunset and iswet == 0')
+                pumpstate(__stateIrrigationOn)
 
-            elif switchsensorvalue == switchSensorIrrigation:  # irrigation selected
-                pumpstate(stateIrrigationSelected)
+            elif switchsensorvalue == __switchSensorIrrigation:  # irrigation selected
+                printd('switchsensorvalue == __switchSensorIrrigation')
+                pumpstate(__stateIrrigationSelected)
 
-            elif switchsensorvalue == switchSensorHose:  # hose selected
-                pumpstate(stateHoseSelected)
+            elif switchsensorvalue == __switchSensorHose:  # hose selected
+                printd('switchsensorvalue == __switchSensorHose')
+                pumpstate(__stateHoseSelected)
 
-            elif switchsensorvalue == switchSensorIrrigationAndPump:  # irrigation selected and pump on
-                pumpstate(stateIrrigationOn)
+            elif switchsensorvalue == __switchSensorIrrigationAndPump:  # irrigation selected and pump on
+                printd('switchsensorvalue == __switchSensorIrrigationAndPump')
+                pumpstate(__stateIrrigationOn)
 
-            elif switchsensorvalue == switchSensorHoseAndPump:  # hose selected and pump on
-                pumpstate(stateHoseOn)
+            elif switchsensorvalue == __switchSensorHoseAndPump:  # hose selected and pump on
+                printd('switchsensorvalue == __switchSensorHoseAndPump')
+                pumpstate(__stateHoseOn)
             else:
-                pumpstate(stateOff)
+                printd('else:')
+                pumpstate(__stateOff)
+
+        # myheartbeat.beat()
 
         utime.sleep(0.25)
 
 
 main()
+

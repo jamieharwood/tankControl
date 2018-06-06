@@ -3,7 +3,8 @@
 import urequests
 import network
 import uio
-import esp
+#import esp
+import gc
 from machine import RTC
 # from timeClass import TimeTank
 
@@ -51,7 +52,8 @@ class Log:
             outbuffer += '\'' + self.__deviceid + '\', '
             outbuffer += '\'' + self.__ip + '\', '
             outbuffer += '\'' + str(self.__rssi) + '\', '
-            outbuffer += '\'' + str(esp.freemem()) + '\', '
+            # outbuffer += '\'' + str(esp.freemem()) + '\', '
+            outbuffer += '\'' + str(gc.mem_free()) + '\', '
             outbuffer += '\'' + outstring + '\', '
             outbuffer += ']\n'
 
@@ -66,7 +68,8 @@ class Log:
             url = url.replace('{0}', self.__deviceid)
             url = url.replace('{1}', self.__ip)
             url = url.replace('{2}', str(self.__rssi))
-            url = url.replace('{3}', str(esp.freemem()))
+            # url = url.replace('{3}', str(esp.freemem()))
+            url = url.replace('{3}', str(gc.mem_free()))
             url = url.replace('{4}', outstring.replace(' ', '_'))
 
             print(url)
